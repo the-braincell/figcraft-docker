@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify authentication, initialize a session, and list tools without editing."""
+"""Verify authentication and live desktop mutation using a disposable new document."""
 import json, os, sys, urllib.request, urllib.error
 url = sys.argv[1] if len(sys.argv)>1 else 'http://127.0.0.1:8000/mcp'
 key = os.environ['MCP_API_KEY']
@@ -38,9 +38,11 @@ def call(name, arguments, request_id):
     return result
 ui = call('inspect_ui', {}, 3)
 assert 'windows' in json.dumps(ui), ui
+call('run_command', {'command':'file.new','params':{}}, 4)
+print('Created disposable test document')
 marker = 'CI-live-desktop-rectangle'
-call('create_node', {'type':'rectangle','x':20,'y':20,'width':100,'height':80,'name':marker}, 4)
-document = call('inspect_document', {'depth':8}, 5)
+call('create_node', {'type':'rectangle','x':20,'y':20,'width':100,'height':80,'name':marker}, 5)
+document = call('inspect_document', {'depth':8}, 6)
 assert marker in json.dumps(document), document
 # Independently inspect the desktop socket from inside the container.
 import subprocess
