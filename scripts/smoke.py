@@ -27,3 +27,25 @@ headers['MCP-Protocol-Version']=r['result']['protocolVersion']
 send({'jsonrpc':'2.0','method':'notifications/initialized'})
 r=send({'jsonrpc':'2.0','id':2,'method':'tools/list'}); assert r['result']['tools'],r
 print('Tools:', ', '.join(t['name'] for t in r['result']['tools']))
+
+# Prove that MCP is operating against the live desktop, not a headless engine.
+def call(name, arguments, request_id):
+    response = send({'jsonrpc':'2.0','id':request_id,'method':'tools/call',
+                     'params':{'name':name,'arguments':arguments}})
+    assert 'result' in response, response
+    result = response['result']
+    assert not result.get('isError'), result
+    return result
+ui = call('inspect_ui', {}, 3)
+assert 'windows' in json.dumps(ui), ui
+marker = 'CI-live-desktop-rectangle'
+call('create_node', {'type':'rectangle','x':20,'y':20,'width':100,'height':80,'name':marker}, 4)
+document = call('inspect_document', {'depth':8}, 5)
+assert marker in json.dumps(document), document
+# Independently inspect the desktop socket from inside the container.
+import subprocess
+control = subprocess.check_output(['docker','compose','exec','-T','figcraft','node','-e',
+    """const s=require('net').connect(7979,'127.0.0.1',()=>s.write(JSON.stringify({id:1,method:'document.inspect',params:{depth:8}})+'\\n'));let b='';s.on('data',c=>{b+=c;if(b.includes('\\n')){console.log(b);s.end();process.exit(0)}});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),65000);"""],timeout=75)
+reply = json.loads(control)
+assert reply.get('ok') and marker in json.dumps(reply), reply
+print('Verified live desktop document mutation through MCP')

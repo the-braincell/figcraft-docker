@@ -4,6 +4,11 @@ ARG SUPERGATEWAY_VERSION=4.2.4
 RUN npm install --global supergateway@${SUPERGATEWAY_VERSION}
 FROM ${FIGCRAFT_IMAGE}
 USER root
+ARG UPSTREAM_DIGEST
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.source="https://github.com/the-braincell/figcraft-docker" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}" \
+      io.figcraft.upstream.digest="${UPSTREAM_DIGEST}"
 COPY --from=gateway /usr/local/bin/node /usr/local/bin/node
 COPY --from=gateway /usr/local/lib/node_modules/supergateway /opt/supergateway
 COPY rootfs/ /

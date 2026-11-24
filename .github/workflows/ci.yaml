@@ -1,22 +1,95 @@
-name: Integrated desktop smoke test
-on: [push, pull_request, workflow_dispatch]
+name: Validate and publish FigCraft
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: figcraft-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  smoke:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      packages: write
     env:
       MCP_API_KEY: ci-only-test-key
       WEB_PASSWORD: ci-only-desktop-password
+      IMAGE: ghcr.io/the-braincell/figcraft-docker
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir -p appdata storage
-      - run: docker compose config --quiet
-      - run: docker compose up -d --build --wait --wait-timeout 240
-      - run: python3 scripts/smoke.py
-      - run: curl -kf --user figcraft:$WEB_PASSWORD https://127.0.0.1:3001/ -o /dev/null
-      - if: always()
+      - name: Resolve upstream immutable digest
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/amd64 junkerderprovinz/figcraft:latest
+          ref=$(docker image inspect junkerderprovinz/figcraft:latest --format '{{index .RepoDigests 0}}')
+          digest=${ref##*@}
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - name: Authenticate to GHCR
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Compare last published build
+        id: check
+        env:
+          UPSTREAM_DIGEST: ${{ steps.upstream.outputs.digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == schedule ]] && docker pull "$IMAGE:latest"; then
+            old_digest=$(docker image inspect "$IMAGE:latest" --format '{{index .Config.Labels "io.figcraft.upstream.digest"}}')
+            old_revision=$(docker image inspect "$IMAGE:latest" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
+            if [[ "$old_digest" == "$UPSTREAM_DIGEST" && "$old_revision" == "$GITHUB_SHA" ]]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "No changes since last successful publication."
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+      - name: Build exact candidate
+        if: steps.check.outputs.skip != 'true'
+        env:
+          FIGCRAFT_IMAGE: ${{ steps.upstream.outputs.ref }}
+          UPSTREAM_DIGEST: ${{ steps.upstream.outputs.digest }}
+        run: |
+          mkdir -p appdata storage
+          sudo chown 1000:1000 appdata storage
+          docker compose config --quiet
+          docker compose build --build-arg UPSTREAM_DIGEST="$UPSTREAM_DIGEST" --build-arg SOURCE_REVISION="$GITHUB_SHA"
+      - name: Start candidate
+        if: steps.check.outputs.skip != 'true'
+        run: docker compose up -d --no-build --wait --wait-timeout 300
+      - name: Verify MCP and live document mutation
+        if: steps.check.outputs.skip != 'true'
+        run: python3 scripts/smoke.py
+      - name: Verify browser authentication
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          test "$(curl -ksS -o /dev/null -w '%{http_code}' https://127.0.0.1:3001/)" = 401
+          curl -kf --user "figcraft:$WEB_PASSWORD" https://127.0.0.1:3001/ -o /dev/null
+      - name: Publish tested image
+        if: success() && steps.check.outputs.skip != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="build-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker tag figcraft-docker:local "$IMAGE:$tag"
+          docker push "$IMAGE:$tag"
+          docker tag figcraft-docker:local "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+          echo "Published $IMAGE:$tag and $IMAGE:latest" >> "$GITHUB_STEP_SUMMARY"
+      - if: always() && steps.check.outputs.skip != 'true'
         run: docker compose logs
-      - if: always()
+      - if: always() && steps.check.outputs.skip != 'true'
         run: docker compose down

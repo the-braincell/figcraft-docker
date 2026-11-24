@@ -47,3 +47,11 @@ Upstream: https://github.com/junkerderprovinz/artcraft-apps ; https://github.com
 ## Base image updates
 
 The default base is `junkerderprovinz/figcraft:latest`. Rebuild with `docker compose build --pull` followed by `docker compose up -d`. Back up persistent data first and rerun the acceptance test. Set FIGCRAFT_IMAGE to a known-good digest for rollback or reproducibility. Upstream changes may affect CLI availability or startup integration.
+
+## Automated distribution (GHCR)
+
+The workflow runs on main pushes, pull requests, manual dispatch and every six hours. Scheduled runs compare the upstream digest and source revision against the last successful GHCR image. Changed builds use the exact resolved upstream digest; the same local candidate is tested and published without rebuilding. Publication is restricted to main, and failures leave the previous latest tag untouched. CI additionally checks that an MCP-created rectangle exists in the live desktop control API; browser pixel-level verification remains manual.
+
+Images: `ghcr.io/the-braincell/figcraft-docker:latest` and unique `build-RUN_ID-ATTEMPT` tags. Linux amd64 initially. For strict rollback pin the registry manifest digest. Packages are private unless the organization changes visibility; configure registry access in Portainer with a GitHub classic PAT with read:packages and any required organization SSO authorization. GitHub Actions uses its own GITHUB_TOKEN with packages:write, subject to org policy.
+
+In Portainer add the GHCR registry, then create a stack from compose.portainer.yaml (paste the file or use Git deployment). Set absolute CONFIG_DIR and STORAGE_DIR to your existing host paths; set WEB_PASSWORD, MCP_API_KEY and desired WEB_BIND/MCP_BIND. Stop the old container before deployment. Do not deploy until the first successful publication. Pull and redeploy manually after backups; the scheduled workflow updates the registry, not your running desktop, so unsaved work is not interrupted. Use FIGCRAFT_MCP_IMAGE to select a prior build or digest if rollback is needed.

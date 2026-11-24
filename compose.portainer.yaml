@@ -1,0 +1,26 @@
+services:
+  figcraft:
+    image: ${FIGCRAFT_MCP_IMAGE:-ghcr.io/the-braincell/figcraft-docker:latest}
+    container_name: figcraft
+    restart: unless-stopped
+    shm_size: 1gb
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3001}:3001"
+      - "${MCP_BIND:-127.0.0.1}:${MCP_PORT:-8000}:8000"
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-America/Los_Angeles}
+      CUSTOM_USER: ${WEB_USER:-figcraft}
+      PASSWORD: ${WEB_PASSWORD:?Set WEB_PASSWORD}
+      SELKIES_ENABLE_BASIC_AUTH: "true"
+      MCP_API_KEY: ${MCP_API_KEY:?Set MCP_API_KEY}
+    volumes:
+      - ${CONFIG_DIR:?Set absolute CONFIG_DIR}:/config
+      - ${STORAGE_DIR:?Set absolute STORAGE_DIR}:/storage
+    healthcheck:
+      test: [CMD, node, -e, "Promise.all([fetch('http://127.0.0.1:8000/healthz').then(r=>{if(!r.ok)throw Error('gateway')}),new Promise((resolve,reject)=>{const s=require('net').connect(7979,'127.0.0.1',()=>{s.end();resolve()});s.on('error',reject)})]).then(()=>process.exit(0)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
