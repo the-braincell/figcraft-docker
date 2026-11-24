@@ -36,7 +36,7 @@ The upstream s6 init remains intact. Its init-craft copies our modified autostar
 
 ## Browser access and timezone
 
-The desktop is unauthenticated by default for trusted internal deployments. Compose does not supply CUSTOM_USER or PASSWORD and sets SELKIES_ENABLE_BASIC_AUTH=false. Remove old authentication overrides from your Portainer stack and recreate the container, not just restart it. To disable direct host access, remove the browser port mapping; the desktop continues running for MCP. Other containers on the same Docker network may still reach it. If authentication is needed later, explicitly configure upstream Nginx CUSTOM_USER and PASSWORD via Compose or use an authenticated reverse proxy. MCP bearer authentication remains mandatory. Default timezone is UTC.
+The desktop is unauthenticated by default for trusted internal deployments. Compose explicitly sets PASSWORD to an empty string and SELKIES_ENABLE_BASIC_AUTH=false. The image removes Basic Auth directives from the upstream Nginx template. Remove old authentication overrides from your Portainer stack and recreate the container, not just restart it. To disable direct host access, remove the browser port mapping; the desktop continues running for MCP. Other containers on the same Docker network may still reach it. If authentication is needed later, use an authenticated reverse proxy; the bundled Nginx template deliberately omits Basic Auth. MCP bearer authentication remains mandatory. Default timezone is UTC.
 
 ## Acceptance test
 

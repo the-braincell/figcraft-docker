@@ -13,5 +13,7 @@ COPY --from=gateway /usr/local/bin/node /usr/local/bin/node
 COPY --from=gateway /usr/local/lib/node_modules/supergateway /opt/supergateway
 COPY rootfs/ /
 RUN chmod 755 /defaults/autostart /etc/s6-overlay/s6-rc.d/svc-figcraft-mcp/run && command -v figcraft-cli && node --version
-ENV SELKIES_ENABLE_BASIC_AUTH=false
+ENV PASSWORD="" SELKIES_ENABLE_BASIC_AUTH=false
+# Remove upstream Basic Auth template directives; init-nginx regenerates the live site on boot.
+RUN sed -i -E '/^[[:space:]]*#?[[:space:]]*auth_basic(_user_file)?[[:space:]]/d' /defaults/default.conf
 EXPOSE 8100

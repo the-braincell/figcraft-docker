@@ -11,6 +11,7 @@ services:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
       TZ: ${TZ:-UTC}
+      PASSWORD: ""
       SELKIES_ENABLE_BASIC_AUTH: "false"
       MCP_API_KEY: ${MCP_API_KEY:?Set MCP_API_KEY}
     volumes:

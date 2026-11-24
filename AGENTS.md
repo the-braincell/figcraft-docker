@@ -11,3 +11,5 @@ User preference: UTC timezone; no browser login by default for internal deployme
 Default published WEB_BIND and MCP_BIND to 0.0.0.0 for internal deployments; retain configurable overrides. Native control port 7979 must remain loopback-only and unpublished.
 
 Do not supply CUSTOM_USER or PASSWORD in default Compose; explicitly disable native Selkies basic auth. Browser access remains unauthenticated on trusted networks only.
+
+Superseding prior optional web authentication notes: explicitly set PASSWORD empty and strip Basic Auth directives from /defaults/default.conf at build time. Use an authenticated external reverse proxy if needed. Keep MCP authentication intact.
