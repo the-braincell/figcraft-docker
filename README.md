@@ -1,41 +1,24 @@
-# FigCraft Docker / MCP gateway
+# FigCraft Docker
 
-An authenticated, stateful Streamable HTTP bridge for the native FigCraft CLI. Designed for the junkerderprovinz Selkies desktop image. No Docker socket or privileged sidecar required.
+One container, one native FigCraft desktop, two interfaces: Selkies browser desktop and authenticated Streamable HTTP MCP. The AI edits the same live document as the human. No sidecar or headless engine.
 
-**Status:** experimental initial scaffold. Container build, gateway authentication and live desktop integration must be validated before production use. CI tests headless mode only.
+**Experimental:** integrated runtime and browser-visible edits are not yet verified. CI checks the control listener, authenticated MCP initialization/tools/list and HTTPS desktop endpoint.
 
-## Attached mode (existing desktop)
+## Deploy
 
-1. Back up your existing /config and design files. Verify the running image version and CLI: `docker exec figcraft figcraft-cli --version`. Set FIGCRAFT_IMAGE to the same version (ideally an immutable digest).
-2. Add the following to the existing desktop service, preserving its current settings. Recreate that service.
-
-```yaml
-services:
-  figcraft:
-    environment:
-      FIGCRAFT_CONTROL_PORT: '7979'
-    ports:
-      - '127.0.0.1:8000:8000'
-```
-
-Do not publish 7979. Open FigCraft in Selkies. If its launcher does not pass through the environment, enable the control channel inside the app (if supported by your version), or start `figcraft --control 7979` from the desktop terminal as the desktop user after closing the original app. Verify the listener with `docker exec figcraft sh -c 'ss -ltn | grep 7979'` if ss is installed.
-
-3. Copy .env.example to .env, set the actual container name and a long random MCP_API_KEY (openssl rand -hex 32). Create workspace and grant UID 1000 write access, or change the Compose user.
+Copy .env.example to .env; set strong unique WEB_PASSWORD and MCP_API_KEY (e.g. openssl rand -hex 32). Match PUID/PGID and point CONFIG_DIR and STORAGE_DIR at your existing mounts. Back them up and stop your old container before starting the replacement; do not share the same config between running instances.
 
 ```sh
-mkdir -p workspace
 docker compose up -d --build
 ```
 
-The sidecar shares the desktop network namespace, so the desktop owns the published port. Recreate the sidecar after recreating the desktop container. A healthy gateway does not prove the desktop control channel is ready.
+Default bindings are loopback on the Docker host. Use an SSH tunnel for both interfaces or configure a trusted VPN/reverse proxy with TLS. To bind to a particular LAN/VPN address, set WEB_BIND and MCP_BIND explicitly. Do not send passwords or bearer tokens over untrusted plaintext HTTP.
 
-## Headless mode
+- Browser: https://127.0.0.1:3001 (desktop username and password; upstream self-signed TLS by default).
+- MCP: http://127.0.0.1:8000/mcp (Authorization: Bearer YOUR_KEY).
+- Control: 127.0.0.1:7979 inside the container only; never publish it.
 
-Run `docker compose -f compose.headless.yaml up -d --build`. No existing desktop required. This creates a separate in-memory document session per MCP client; explicitly save documents to /workspace for persistence. Avoid opening and writing the same local file concurrently.
-
-## Clients
-
-Use HTTPS or an SSH tunnel (for example `ssh -L 8000:127.0.0.1:8000 user@docker-host`). The endpoint is then http://127.0.0.1:8000/mcp.
+Example tunnel: ssh -L 3001:127.0.0.1:3001 -L 8000:127.0.0.1:8000 user@docker-host
 
 Claude Code:
 
@@ -43,20 +26,20 @@ Claude Code:
 claude mcp add --transport http figcraft http://127.0.0.1:8000/mcp --header 'Authorization: Bearer YOUR_KEY'
 ```
 
-Claude Desktop configuration (Node.js installed locally):
+Claude Desktop local configuration:
 
 ```json
 {"mcpServers":{"figcraft":{"command":"npx","args":["-y","supergateway@4.2.4","--streamableHttp","http://127.0.0.1:8000/mcp","--oauth2Bearer","YOUR_KEY"]}}}
 ```
 
-Claude.ai cloud connectors require reachable HTTPS and compatible authentication; this deployment targets local clients.
+The upstream s6 init remains intact. Its init-craft copies our modified autostart to the desktop config on startup. The app starts with --control 7979 and automation file roots /storage; s6 runs Supergateway as abc. Every MCP session attaches to the existing app, not a new document engine. A gateway restart does not restart the desktop. The health check verifies both listeners, not actual edits.
 
-## Validation
+## Acceptance test
 
-Export MCP_API_KEY in your shell and run `python3 scripts/smoke.py http://127.0.0.1:8000/mcp`. Then ask Claude to inspect the active document without editing. Test edits on a disposable document. Do not expose the gateway beyond loopback until the authentication smoke test passes.
+Export MCP_API_KEY locally and run python3 scripts/smoke.py. Open the browser and create a disposable design. Ask Claude to inspect the active document, add a named rectangle, then confirm it appears in the browser. Edit it manually and ask Claude to inspect it again. Save to /storage and verify persistence after restart. Do not blindly retry an edit after a timeout.
 
-## Security and maintenance
+## Security
 
-The MCP key grants powerful editing and file operations. Attached mode inherits the desktop app's own file access, including mounted /storage; the sidecar's read-only root does not sandbox the desktop. Restrict desktop mounts and configure automation roots if supported. Never expose the unauthenticated control port. Use a single trusted operator; concurrent clients may act on the same document. Do not commit credentials. Rebuild both images together when upgrading FigCraft; run headless CI and an attached smoke test. No automatic upgrades.
+Single trusted operator; both interfaces can alter the active document. Automation roots restrict file operations but are not a complete sandbox. Keep secrets out of git, restrict mounts, never publish the control socket, and verify both authentication mechanisms before enabling remote access. Claude.ai cloud connectors are not covered by this LAN deployment.
 
-Upstream: https://github.com/storytold/figcraft/blob/main/docs/mcp.md ; https://github.com/junkerderprovinz/artcraft-apps ; https://github.com/supercorp-ai/supergateway .
+Upstream: https://github.com/junkerderprovinz/artcraft-apps ; https://github.com/storytold/figcraft/blob/v0.18.1/docs/mcp.md ; https://github.com/supercorp-ai/supergateway .

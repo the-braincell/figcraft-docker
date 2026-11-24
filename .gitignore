@@ -1,3 +1,4 @@
 .env
-workspace/
+appdata/
+storage/
 __pycache__/

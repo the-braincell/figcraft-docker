@@ -1,10 +1,5 @@
-# Development handoff
+# Development requirements
 
-Goal: a Portainer-friendly FigCraft MCP gateway for the existing junkerderprovinz/figcraft Selkies desktop, plus standalone headless mode.
+Single integrated container is the product. Preserve upstream Selkies/s6 init, launch exactly one FigCraft desktop with loopback control enabled, and attach all MCP sessions to it. Do not reintroduce a headless or sidecar default.
 
-- Verify upstream CLI flags, image tag, binary paths, Supergateway authentication and health endpoint against pinned versions before declaring production readiness.
-- Run headless CI, including rejection of unauthenticated requests, MCP initialization and tools/list.
-- Test live attached mode on a disposable document in a real desktop container.
-- Keep internal control port private, use least privilege, avoid Docker socket mounts and never commit secrets.
-- Add GHCR publishing only after the smoke test passes; use versioned releases and eventually test ARM64.
-- Prefer pull requests for subsequent changes. Document actual validation results and limitations.
+Validate pinned image and CLI, gateway authentication, browser authentication, control readiness and MCP tool enumeration. Then test browser-visible edits in both directions and persistence. CI must not claim live visual tests until they actually run. Preserve existing config/storage mounts and GPU options. Publish versioned GHCR images after validation. Never expose the internal control port or commit secrets.

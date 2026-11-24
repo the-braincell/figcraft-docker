@@ -1,0 +1,5 @@
+#!/bin/sh
+export XDG_CONFIG_HOME=/config/.config
+export XDG_DATA_HOME=/config/.local/share
+export XDG_CACHE_HOME=/config/.cache
+dbus-run-session -- /usr/bin/figcraft --control 7979 --automation-read-root /storage --automation-write-root /storage

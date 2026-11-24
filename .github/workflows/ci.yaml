@@ -1,20 +1,22 @@
-name: Container smoke test
+name: Integrated desktop smoke test
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
-      MCP_API_KEY: ci-only-test-key-not-for-production
+      MCP_API_KEY: ci-only-test-key
+      WEB_PASSWORD: ci-only-desktop-password
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir workspace && chmod 777 workspace
-      - run: docker compose -f compose.headless.yaml config --quiet
-      - run: docker compose -f compose.headless.yaml up -d --build --wait
+      - run: mkdir -p appdata storage
+      - run: docker compose config --quiet
+      - run: docker compose up -d --build --wait --wait-timeout 240
       - run: python3 scripts/smoke.py
+      - run: curl -kf --user figcraft:$WEB_PASSWORD https://127.0.0.1:3001/ -o /dev/null
       - if: always()
-        run: docker compose -f compose.headless.yaml logs
+        run: docker compose logs
       - if: always()
-        run: docker compose -f compose.headless.yaml down
+        run: docker compose down

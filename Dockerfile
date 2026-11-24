@@ -6,7 +6,6 @@ FROM ${FIGCRAFT_IMAGE}
 USER root
 COPY --from=gateway /usr/local/bin/node /usr/local/bin/node
 COPY --from=gateway /usr/local/lib/node_modules/supergateway /opt/supergateway
-COPY scripts/start.sh /usr/local/bin/start-mcp
-RUN chmod 755 /usr/local/bin/start-mcp && command -v figcraft-cli && figcraft-cli --version && node --version
-ENTRYPOINT ["/usr/local/bin/start-mcp"]
-CMD []
+COPY rootfs/ /
+RUN chmod 755 /defaults/autostart /etc/s6-overlay/s6-rc.d/svc-figcraft-mcp/run && command -v figcraft-cli && node --version
+EXPOSE 8000
