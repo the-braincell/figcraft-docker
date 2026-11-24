@@ -64,12 +64,12 @@ In Portainer add the GHCR registry, then create a stack from compose.portainer.y
 
 Port 8100 serves both /mcp and /api/files using the existing MCP bearer key. All file tool and API paths are relative to /storage, e.g. assets/logo.png. Native FigCraft tools use the resulting absolute /storage/assets/logo.png path. Selkies uploads/downloads also target /storage.
 
-Set FILE_PUBLIC_URL to a browser-reachable origin, e.g. http://172.28.1.10:8100 (or your HTTPS reverse proxy origin), to enable temporary links. Ordinary API calls do not require it. FILE_MAX_BYTES defaults to 268435456 (256 MiB). Inline MCP uploads are limited to 1 MiB decoded. The service runs as abc (configured PUID/PGID); startup checks writability and, if necessary, repairs ownership and owner permissions on the storage root only. Existing files and subdirectories are never recursively changed. Writable mounts retain their existing ownership. If repair fails (e.g. read-only bind mount, SMB/NFS root squashing or ACLs), startup logs a warning and continues; fix permissions on the host. Recreate after changing environment variables.
+Set FILE_PUBLIC_URL to a browser-reachable origin, e.g. http://figcraft.example.com:8100 (or your HTTPS reverse proxy origin), to enable temporary links. Ordinary API calls do not require it. FILE_MAX_BYTES defaults to 268435456 (256 MiB). Inline MCP uploads are limited to 1 MiB decoded. The service runs as abc (configured PUID/PGID); startup checks writability and, if necessary, repairs ownership and owner permissions on the storage root only. Existing files and subdirectories are never recursively changed. Writable mounts retain their existing ownership. If repair fails (e.g. read-only bind mount, SMB/NFS root squashing or ACLs), startup logs a warning and continues; fix permissions on the host. Recreate after changing environment variables.
 
 ### HTTP API
 
 ```sh
-export FIGCRAFT_URL=http://172.28.1.10:8100
+export FIGCRAFT_URL=http://figcraft.example.com:8100
 # Set MCP_API_KEY securely in your shell.
 curl --fail-with-body -H "Authorization: Bearer $MCP_API_KEY" \
   --upload-file logo.png "$FIGCRAFT_URL/api/files/assets/logo.png"
