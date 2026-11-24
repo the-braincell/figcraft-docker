@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify authentication and live desktop mutation using a disposable new document."""
 import json, os, sys, urllib.request, urllib.error
-url = sys.argv[1] if len(sys.argv)>1 else 'http://127.0.0.1:8000/mcp'
+url = sys.argv[1] if len(sys.argv)>1 else 'http://127.0.0.1:8100/mcp'
 key = os.environ['MCP_API_KEY']
 headers = {'Accept':'application/json, text/event-stream','Content-Type':'application/json'}
 def send(payload, auth=True):

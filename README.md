@@ -15,21 +15,21 @@ docker compose up -d --build
 Both published ports bind to all IPv4 interfaces (0.0.0.0) by default for trusted internal networks. Restrict access with firewall rules or override WEB_BIND and MCP_BIND with a specific LAN/VPN address or 127.0.0.1. Use TLS or a trusted VPN for remote access. The browser is unauthenticated by default; do not expose it to untrusted networks. Do not send bearer tokens over untrusted plaintext HTTP.
 
 - Browser: https://127.0.0.1:3001 (no login by default; upstream self-signed TLS by default).
-- MCP: http://127.0.0.1:8000/mcp (Authorization: Bearer YOUR_KEY).
+- MCP: http://127.0.0.1:8100/mcp (Authorization: Bearer YOUR_KEY).
 - Control: 127.0.0.1:7979 inside the container only; never publish it.
 
-Example tunnel: ssh -L 3001:127.0.0.1:3001 -L 8000:127.0.0.1:8000 user@docker-host
+Example tunnel: ssh -L 3001:127.0.0.1:3001 -L 8100:127.0.0.1:8100 user@docker-host
 
 Claude Code:
 
 ```sh
-claude mcp add --transport http figcraft http://127.0.0.1:8000/mcp --header 'Authorization: Bearer YOUR_KEY'
+claude mcp add --transport http figcraft http://127.0.0.1:8100/mcp --header 'Authorization: Bearer YOUR_KEY'
 ```
 
 Claude Desktop local configuration:
 
 ```json
-{"mcpServers":{"figcraft":{"command":"npx","args":["-y","supergateway@4.2.4","--streamableHttp","http://127.0.0.1:8000/mcp","--oauth2Bearer","YOUR_KEY"]}}}
+{"mcpServers":{"figcraft":{"command":"npx","args":["-y","supergateway@4.2.4","--streamableHttp","http://127.0.0.1:8100/mcp","--oauth2Bearer","YOUR_KEY"]}}}
 ```
 
 The upstream s6 init remains intact. Its init-craft copies our modified autostart to the desktop config on startup. The app starts with --control 7979 and automation file roots /storage; s6 runs Supergateway as abc. Every MCP session attaches to the existing app, not a new document engine. A gateway restart does not restart the desktop. The health check verifies both listeners, not actual edits.

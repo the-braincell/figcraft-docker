@@ -8,4 +8,4 @@ fi
 export SUPERGATEWAY_API_KEY="$MCP_API_KEY"
 cd /storage
 bin=$(node -p 'const b=require("/opt/supergateway/package.json").bin; typeof b === "string" ? b : b.supergateway')
-exec s6-setuidgid abc node "/opt/supergateway/$bin" --stdio 'figcraft-cli mcp --attach 7979 --timeout 120' --outputTransport streamableHttp --stateful --host 0.0.0.0 --port 8000 --healthEndpoint /healthz
+exec s6-setuidgid abc node "/opt/supergateway/$bin" --stdio 'figcraft-cli mcp --attach 7979 --timeout 120' --outputTransport streamableHttp --stateful --host 0.0.0.0 --port 8100 --healthEndpoint /healthz
