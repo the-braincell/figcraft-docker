@@ -1,4 +1,4 @@
-ARG FIGCRAFT_IMAGE=junkerderprovinz/figcraft:0.18.1
+ARG FIGCRAFT_IMAGE=junkerderprovinz/figcraft:latest
 FROM node:22-bookworm-slim AS gateway
 ARG SUPERGATEWAY_VERSION=4.2.4
 RUN npm install --global supergateway@${SUPERGATEWAY_VERSION}

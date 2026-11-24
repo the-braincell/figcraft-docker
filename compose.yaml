@@ -3,7 +3,7 @@ services:
     build:
       context: .
       args:
-        FIGCRAFT_IMAGE: ${FIGCRAFT_IMAGE:-junkerderprovinz/figcraft:0.18.1}
+        FIGCRAFT_IMAGE: ${FIGCRAFT_IMAGE:-junkerderprovinz/figcraft:latest}
         SUPERGATEWAY_VERSION: ${SUPERGATEWAY_VERSION:-4.2.4}
     image: figcraft-docker:local
     container_name: figcraft

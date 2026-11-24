@@ -43,3 +43,7 @@ Export MCP_API_KEY locally and run python3 scripts/smoke.py. Open the browser an
 Single trusted operator; both interfaces can alter the active document. Automation roots restrict file operations but are not a complete sandbox. Keep secrets out of git, restrict mounts, never publish the control socket, and verify both authentication mechanisms before enabling remote access. Claude.ai cloud connectors are not covered by this LAN deployment.
 
 Upstream: https://github.com/junkerderprovinz/artcraft-apps ; https://github.com/storytold/figcraft/blob/v0.18.1/docs/mcp.md ; https://github.com/supercorp-ai/supergateway .
+
+## Base image updates
+
+The default base is `junkerderprovinz/figcraft:latest`. Rebuild with `docker compose build --pull` followed by `docker compose up -d`. Back up persistent data first and rerun the acceptance test. Set FIGCRAFT_IMAGE to a known-good digest for rollback or reproducibility. Upstream changes may affect CLI availability or startup integration.
