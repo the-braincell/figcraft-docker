@@ -23,8 +23,12 @@ except urllib.error.HTTPError as e:
     assert e.code==401, e.code
 else: raise RuntimeError('Unauthenticated request accepted')
 r=send(init); assert 'result' in r,r
+assert headers.get('Mcp-Session-Id'), 'Initialize response did not provide an MCP session ID'
 headers['MCP-Protocol-Version']=r['result']['protocolVersion']
-send({'jsonrpc':'2.0','method':'notifications/initialized'})
+try:
+    send({'jsonrpc':'2.0','method':'notifications/initialized'})
+except urllib.error.HTTPError as e:
+    raise RuntimeError(f'MCP initialized notification failed: HTTP {e.code}: {e.read().decode(errors="replace")}') from e
 r=send({'jsonrpc':'2.0','id':2,'method':'tools/list'}); assert r['result']['tools'],r
 print('Tools:', ', '.join(t['name'] for t in r['result']['tools']))
 

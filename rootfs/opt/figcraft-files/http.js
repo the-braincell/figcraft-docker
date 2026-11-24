@@ -2,7 +2,32 @@
 const http=require('node:http'),{pipeline}=require('node:stream/promises'),s=require('./storage'),t=require('./tokens');
 function json(res,status,obj){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(obj))}
 function auth(req){if(!t.equal(req.headers.authorization,'Bearer '+t.key)&&!t.equal(req.headers['x-api-key'],t.key))s.fail(401,'Authentication required')}
-function proxy(req,res){const headers={...req.headers,host:'127.0.0.1:8101'};const p=http.request({hostname:'127.0.0.1',port:8101,path:req.url,method:req.method,headers},r=>{res.writeHead(r.statusCode,r.headers);r.pipe(res)});p.on('error',()=>{if(!res.headersSent)json(res,502,{error:'MCP gateway unavailable'});else res.destroy()});res.on('close',()=>p.destroy());req.pipe(p)}
+// Forward end-to-end headers, never connection/framing headers from the other hop.
+function endToEnd(headers){
+ const out={...headers};
+ const excluded=['connection','keep-alive','proxy-authenticate','proxy-authorization','te','trailer','transfer-encoding','upgrade',...String(headers.connection||'').split(',').map(x=>x.trim().toLowerCase())];
+ for(const name of excluded)delete out[name];
+ return out;
+}
+function proxy(req,res){
+ const headers=endToEnd(req.headers);
+ headers.host='127.0.0.1:8101';
+ // MCP session and protocol headers are end-to-end, even across SSE requests.
+ for(const name of ['mcp-session-id','mcp-protocol-version','last-event-id'])if(req.headers[name]!==undefined)headers[name]=req.headers[name];
+ const p=http.request({hostname:'127.0.0.1',port:8101,path:req.url,method:req.method,headers},r=>{
+  const outgoing=endToEnd(r.headers);
+  if(r.headers['mcp-session-id'])outgoing['mcp-session-id']=r.headers['mcp-session-id'];
+  if(r.statusCode>=400)console.error('[mcp-proxy]',req.method,r.statusCode,'session supplied:',Boolean(headers['mcp-session-id']));
+  res.writeHead(r.statusCode,outgoing);
+  res.flushHeaders();
+  r.on('error',()=>res.destroy());
+  r.pipe(res);
+ });
+ p.on('error',()=>{if(!res.headersSent)json(res,502,{error:'MCP gateway unavailable'});else res.destroy()});
+ res.on('close',()=>{if(!res.writableFinished)p.destroy()});
+ req.on('aborted',()=>p.destroy());
+ req.pipe(p);
+}
 async function download(res,p,head=false){const {h,st}=await s.open(p);try{res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':st.size,'Content-Disposition':"attachment; filename*=UTF-8''"+encodeURIComponent(p.split('/').pop()).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16)),'X-Content-Type-Options':'nosniff','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});if(head)res.end();else await pipeline(h.createReadStream({autoClose:false}),res)}finally{await h.close()}}
 const form='<!doctype html><html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>FigCraft upload</title><style>body{font:16px system-ui;max-width:36rem;margin:4rem auto;padding:1rem}button{margin:1rem 0}pre{white-space:pre-wrap}</style><h1>Upload to FigCraft</h1><p>Choose the file to transfer to the requested storage path.</p><input id="file" type="file"><button id="send">Upload</button><pre id="status"></pre><script>document.getElementById("send").onclick=async()=>{const f=document.getElementById("file").files[0],o=document.getElementById("status");if(!f)return;try{o.textContent="Uploading…";const r=await fetch(location.pathname,{method:"PUT",body:f});o.textContent=await r.text()}catch(e){o.textContent=e.message}};</script></html>';
 async function upload(req,res,p,overwrite){const length=req.headers['content-length'];if(length!==undefined&&(!/^\d+$/.test(length)||Number(length)>s.max))s.fail(413,'Upload too large');const r=await s.put(p,s.Readable.from((async function*(){for await(const c of req)yield c})()),{overwrite});json(res,201,r)}
