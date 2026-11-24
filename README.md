@@ -36,7 +36,7 @@ The upstream s6 init remains intact. Its init-craft copies our modified autostar
 
 ## Browser access and timezone
 
-The desktop is unauthenticated by default (`WEB_AUTH=false`, empty `WEB_PASSWORD`) for trusted internal deployments. To disable direct host access, remove the browser port mapping from Compose; the desktop process remains running for MCP. Other containers on the same Docker network may still reach it, so isolate that network if necessary. To opt into browser authentication, set `WEB_AUTH=true`, `WEB_USER` and a nonempty `WEB_PASSWORD`. Clear any previous browser password when disabling authentication, since the upstream web proxy may use it independently. MCP bearer authentication remains mandatory. The default timezone is UTC (`TZ=UTC`).
+The desktop is unauthenticated by default for trusted internal deployments. Compose does not supply CUSTOM_USER or PASSWORD and sets SELKIES_ENABLE_BASIC_AUTH=false. Remove old authentication overrides from your Portainer stack and recreate the container, not just restart it. To disable direct host access, remove the browser port mapping; the desktop continues running for MCP. Other containers on the same Docker network may still reach it. If authentication is needed later, explicitly configure upstream Nginx CUSTOM_USER and PASSWORD via Compose or use an authenticated reverse proxy. MCP bearer authentication remains mandatory. Default timezone is UTC.
 
 ## Acceptance test
 

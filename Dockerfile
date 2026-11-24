@@ -13,4 +13,5 @@ COPY --from=gateway /usr/local/bin/node /usr/local/bin/node
 COPY --from=gateway /usr/local/lib/node_modules/supergateway /opt/supergateway
 COPY rootfs/ /
 RUN chmod 755 /defaults/autostart /etc/s6-overlay/s6-rc.d/svc-figcraft-mcp/run && command -v figcraft-cli && node --version
+ENV SELKIES_ENABLE_BASIC_AUTH=false
 EXPOSE 8100

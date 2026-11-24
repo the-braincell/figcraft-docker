@@ -75,7 +75,8 @@ jobs:
       - name: Verify default unauthenticated browser access
         if: steps.check.outputs.skip != 'true'
         run: |
-          curl -kf https://127.0.0.1:3001/ -o /dev/null
+          test "$(curl -ksS -o /dev/null -w '%{http_code}' https://127.0.0.1:3001/)" = 200
+          docker compose exec -T figcraft sh -c 'test -z "${PASSWORD:-}" && test "$SELKIES_ENABLE_BASIC_AUTH" = false'
           test "$(docker compose exec -T figcraft date +%z)" = +0000
       - name: Publish tested image
         if: success() && steps.check.outputs.skip != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
