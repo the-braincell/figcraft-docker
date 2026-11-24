@@ -20,6 +20,7 @@ jobs:
       packages: write
     env:
       MCP_API_KEY: ci-only-test-key
+      FILE_PUBLIC_URL: http://127.0.0.1:8100
       IMAGE: ghcr.io/the-braincell/figcraft-docker
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +57,9 @@ jobs:
             fi
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
+      - name: Check file service syntax
+        if: steps.check.outputs.skip != 'true'
+        run: for file in rootfs/opt/figcraft-files/*.js; do node --check "$file"; done
       - name: Build exact candidate
         if: steps.check.outputs.skip != 'true'
         env:

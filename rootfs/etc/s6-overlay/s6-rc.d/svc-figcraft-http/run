@@ -1,0 +1,8 @@
+#!/usr/bin/with-contenv bash
+set -eu
+if [[ -z "${MCP_API_KEY:-}" ]]; then
+  echo '[files] MCP_API_KEY missing; refusing to serve' >&2
+  sleep 60
+  exit 1
+fi
+exec s6-setuidgid abc node /opt/figcraft-files/http.js

@@ -51,3 +51,42 @@ control = subprocess.check_output(['docker','compose','exec','-T','figcraft','no
 reply = json.loads(control)
 assert reply.get('ok') and marker in json.dumps(reply), reply
 print('Verified live desktop document mutation through MCP')
+
+# File API and MCP share the same authenticated endpoint.
+import hashlib
+origin = url.rsplit('/mcp',1)[0]
+def http(path, method='GET', data=None, auth=True, expected=200):
+    h={'Authorization':'Bearer '+key} if auth else {}
+    req=urllib.request.Request(origin+path,data=data,headers=h,method=method)
+    try:
+        with urllib.request.urlopen(req,timeout=30) as r:
+            assert r.status==expected,(r.status,expected)
+            return r.read()
+    except urllib.error.HTTPError as e:
+        assert e.code==expected,(e.code,expected,e.read())
+        return e.read()
+payload=b'\x00\xffFigCraft binary test'
+http('/api/files/ci-test.bin','PUT',payload,False,401)
+result=json.loads(http('/api/files/ci-test.bin','PUT',payload,True,201))
+assert result['sha256']==hashlib.sha256(payload).hexdigest(),result
+assert http('/api/files/ci-test.bin')==payload
+http('/api/files/ci-test.bin','PUT',payload,True,409)
+http('/api/files/%2e%2e/escape.bin','PUT',payload,True,400)
+subprocess.check_call(['docker','compose','exec','-T','figcraft','ln','-s','/etc','/storage/ci-link'])
+http('/api/files/ci-link/passwd',expected=400)
+result=call('upload_text',{'path':'ci-text.svg','content':'<svg/>'},7)
+assert '/storage/ci-text.svg' in json.dumps(result),result
+assert http('/api/files/ci-text.svg')==b'<svg/>'
+assert 'ci-test.bin' in json.dumps(call('list_files',{},8))
+link=call('get_upload_url',{'path':'ci-signed.bin'},9)
+link=json.loads(link['content'][0]['text'])['url']
+signed=link.removeprefix(origin)
+http(signed,auth=False)
+http(signed,'PUT',payload,False,201)
+http(signed,'PUT',payload,False,409)
+assert http('/api/files/ci-signed.bin')==payload
+http(signed+'x','PUT',payload,False,403)
+link=call('get_download_url',{'path':'ci-signed.bin'},10)
+link=json.loads(link['content'][0]['text'])['url']
+assert http(link.removeprefix(origin),auth=False)==payload
+print('Verified authenticated binary transfers, MCP file tools, signed links, and path restrictions')

@@ -59,3 +59,58 @@ The workflow runs on main pushes, pull requests, manual dispatch and every six h
 Images: `ghcr.io/the-braincell/figcraft-docker:latest` and unique `build-RUN_ID-ATTEMPT` tags. Linux amd64 initially. For strict rollback pin the registry manifest digest. Packages are private unless the organization changes visibility; configure registry access in Portainer with a GitHub classic PAT with read:packages and any required organization SSO authorization. GitHub Actions uses its own GITHUB_TOKEN with packages:write, subject to org policy.
 
 In Portainer add the GHCR registry, then create a stack from compose.portainer.yaml (paste the file or use Git deployment). Set absolute CONFIG_DIR and STORAGE_DIR to your existing host paths; set MCP_API_KEY and desired WEB_BIND/MCP_BIND. Stop the old container before deployment. Do not deploy until the first successful publication. Pull and redeploy manually after backups; the scheduled workflow updates the registry, not your running desktop, so unsaved work is not interrupted. Use FIGCRAFT_MCP_IMAGE to select a prior build or digest if rollback is needed.
+
+## File transfers
+
+Port 8100 serves both /mcp and /api/files using the existing MCP bearer key. All file tool and API paths are relative to /storage, e.g. assets/logo.png. Native FigCraft tools use the resulting absolute /storage/assets/logo.png path. Selkies uploads/downloads also target /storage.
+
+Set FILE_PUBLIC_URL to a browser-reachable origin, e.g. http://172.28.1.10:8100 (or your HTTPS reverse proxy origin), to enable temporary links. Ordinary API calls do not require it. FILE_MAX_BYTES defaults to 268435456 (256 MiB). Inline MCP uploads are limited to 1 MiB decoded. The service runs as abc (configured PUID/PGID); ensure the storage mount is writable. Recreate after changing environment variables.
+
+### HTTP API
+
+```sh
+export FIGCRAFT_URL=http://172.28.1.10:8100
+# Set MCP_API_KEY securely in your shell.
+curl --fail-with-body -H "Authorization: Bearer $MCP_API_KEY" \
+  --upload-file logo.png "$FIGCRAFT_URL/api/files/assets/logo.png"
+curl --fail-with-body -H "Authorization: Bearer $MCP_API_KEY" \
+  "$FIGCRAFT_URL/api/files?path=assets"
+curl --fail-with-body -H "Authorization: Bearer $MCP_API_KEY" \
+  "$FIGCRAFT_URL/api/files/assets/logo.png" -o logo.png
+curl --fail-with-body -I -H "Authorization: Bearer $MCP_API_KEY" \
+  "$FIGCRAFT_URL/api/files/assets/logo.png"
+```
+
+PUT sends raw binary bytes, not multipart; returns path, byte count and SHA-256. Append ?overwrite=true only to intentionally replace a file. GET downloads; HEAD gives length; GET /api/files lists a directory (optional path query); DELETE requires ?confirm=true. URL-encode special characters in each path segment. Uploads create parent directories and stage files before atomic publication. Default no overwrite returns 409 on conflict.
+
+### MCP tools
+
+| Tool | Arguments |
+| --- | --- |
+| upload_text | path, content, overwrite=false |
+| upload_file | path, content_base64, overwrite=false |
+| get_upload_url | path, overwrite=false |
+| get_download_url | path |
+| list_files | path="" |
+| get_file_info | path |
+| create_directory | path |
+| move_file | path, destination |
+| delete_file | path, confirm=true (after user approval) |
+
+### Claude Desktop and Hermes
+
+Keep the existing MCP configuration; no new client installation is needed. In Claude Desktop, ask for a temporary upload URL for assets/logo.png. Open it in your browser, choose the local file, and upload. Tell Claude when complete; it can then import /storage/assets/logo.png into the live desktop. Claude can generate SVG/text directly using upload_text. Paperclip attachments do not automatically forward their original binary bytes to this service. Ask for a download link to retrieve an exported file. Hermes can additionally perform the binary curl upload directly when its terminal can access the source file.
+
+Temporary URLs are HMAC-signed bearer capabilities scoped to one file and operation, valid for 15 minutes, reusable until expiry. No-overwrite prevents a second successful upload by default. They contain no master key, but anyone holding a link can use it; avoid sharing or logging links. Rotating the MCP key revokes all links. Upload links serve a simple browser form and accept raw PUT; download links accept GET/HEAD.
+
+### Security and troubleshooting
+
+- 401: use the MCP bearer key rather than GHCR credentials.
+- 403 on a temporary URL: invalid or expired; obtain a fresh link.
+- URL tool error: configure FILE_PUBLIC_URL with scheme, host and optional port, no path.
+- 409: choose a different filename or explicitly authorize overwrite.
+- 413: use binary HTTP for large files or adjust FILE_MAX_BYTES.
+- 403 on storage operations: check mount ownership and PUID/PGID.
+- Missing MCP tools: reconnect the client after redeploying the new image.
+
+File paths reject absolute paths, traversal and symlink traversal using Linux directory descriptors. Only regular files are served. The shared storage mount is trusted, not an isolation boundary against hostile local users or processes concurrently moving directories. Use HTTPS or a trusted VPN. Native Supergateway is now internal-only on 127.0.0.1:8101; the HTTP front end proxies /mcp and /healthz. Never publish 8101 or 7979. The unauthenticated Selkies web UI must remain on a trusted network.

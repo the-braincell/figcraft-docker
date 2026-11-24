@@ -13,3 +13,5 @@ Default published WEB_BIND and MCP_BIND to 0.0.0.0 for internal deployments; ret
 Do not supply CUSTOM_USER or PASSWORD in default Compose; explicitly disable native Selkies basic auth. Browser access remains unauthenticated on trusted networks only.
 
 Superseding prior optional web authentication notes: explicitly set PASSWORD empty and strip Basic Auth directives from /defaults/default.conf at build time. Use an authenticated external reverse proxy if needed. Keep MCP authentication intact.
+
+File transfers: public port 8100 serves MCP and authenticated HTTP; Supergateway 8101 and native control 7979 are internal-only. Keep paths confined to /storage, reject traversal/symlinks, default no overwrite, stage uploads atomically, enforce size limits and scoped expiring signed links. Maintain README and CI coverage for binary roundtrips, MCP tools, authentication, signed links and live edits.

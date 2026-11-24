@@ -19,6 +19,11 @@ services:
       PASSWORD: ""
       SELKIES_ENABLE_BASIC_AUTH: "false"
       MCP_API_KEY: ${MCP_API_KEY:?Set MCP_API_KEY}
+      FILE_PUBLIC_URL: ${FILE_PUBLIC_URL:-}
+      FILE_MAX_BYTES: ${FILE_MAX_BYTES:-268435456}
+      FILE_MANAGER_PATH: /storage
+      SELKIES_FILE_TRANSFERS: "upload,download"
+      SELKIES_UI_SIDEBAR_SHOW_FILES: "true"
     volumes:
       - ${CONFIG_DIR:-./appdata}:/config
       - ${STORAGE_DIR:-./storage}:/storage
