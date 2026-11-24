@@ -7,3 +7,5 @@ Validate pinned image and CLI, gateway authentication, default unauthenticated b
 The user runs junkerderprovinz/figcraft:latest; retain this as the default base, with an optional digest override. Validate the actual pulled image in CI.
 
 User preference: UTC timezone; no browser login by default for internal deployments. Browser authentication is opt-in, and the browser port mapping may be removed without disabling MCP. Keep MCP bearer authentication mandatory.
+
+Default published WEB_BIND and MCP_BIND to 0.0.0.0 for internal deployments; retain configurable overrides. Native control port 7979 must remain loopback-only and unpublished.

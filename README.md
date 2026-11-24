@@ -12,7 +12,7 @@ Copy .env.example to .env; set a strong unique MCP_API_KEY (e.g. openssl rand -h
 docker compose up -d --build
 ```
 
-Default bindings are loopback on the Docker host. Use an SSH tunnel for both interfaces or configure a trusted VPN/reverse proxy with TLS. To bind to a particular LAN/VPN address, set WEB_BIND and MCP_BIND explicitly. Do not send passwords or bearer tokens over untrusted plaintext HTTP.
+Both published ports bind to all IPv4 interfaces (0.0.0.0) by default for trusted internal networks. Restrict access with firewall rules or override WEB_BIND and MCP_BIND with a specific LAN/VPN address or 127.0.0.1. Use TLS or a trusted VPN for remote access. The browser is unauthenticated by default; do not expose it to untrusted networks. Do not send bearer tokens over untrusted plaintext HTTP.
 
 - Browser: https://127.0.0.1:3001 (no login by default; upstream self-signed TLS by default).
 - MCP: http://127.0.0.1:8000/mcp (Authorization: Bearer YOUR_KEY).
