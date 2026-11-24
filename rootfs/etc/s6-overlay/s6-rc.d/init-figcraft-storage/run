@@ -1,0 +1,35 @@
+#!/usr/bin/with-contenv bash
+set -eu
+storage=/storage
+warn() { echo "[init-figcraft-storage] WARNING: $*" >&2; }
+if [[ -L "$storage" ]]; then
+  warn "$storage is a symlink; refusing ownership changes"
+  exit 0
+fi
+if ! mkdir -p "$storage"; then
+  warn "Cannot create $storage; verify the storage mount"
+  exit 0
+fi
+probe() {
+  s6-setuidgid abc sh -c 'p=$(mktemp /storage/.figcraft-upload-probe.XXXXXXXX) && rm -- "$p"' >/dev/null 2>&1
+}
+if probe; then
+  echo "[init-figcraft-storage] Storage is writable by abc; leaving ownership unchanged"
+  exit 0
+fi
+uid=$(id -u abc)
+gid=$(id -g abc)
+echo "[init-figcraft-storage] Repairing storage root for UID $uid GID $gid"
+if ! chown --no-dereference "$uid:$gid" "$storage"; then
+  warn "Unable to change storage ownership; check host mount permissions"
+fi
+if [[ "$(stat -c %u "$storage")" == "$uid" ]]; then
+  if ! chmod u+rwx "$storage"; then
+    warn "Unable to change storage owner permissions"
+  fi
+fi
+if probe; then
+  echo "[init-figcraft-storage] Storage root is now writable"
+else
+  warn "$storage is still not writable by abc ($uid:$gid); uploads and saves may fail. Check bind-mount ownership, ACLs, read-only mounts or SMB/NFS settings."
+fi

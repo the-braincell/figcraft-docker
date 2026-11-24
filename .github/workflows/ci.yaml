@@ -67,12 +67,23 @@ jobs:
           UPSTREAM_DIGEST: ${{ steps.upstream.outputs.digest }}
         run: |
           mkdir -p appdata storage
-          sudo chown 1000:1000 appdata storage
+          sudo chown 1000:1000 appdata
+          sudo chown 0:0 storage
+          sudo chmod 0755 storage
+          sudo touch storage/ci-existing-file
+          sudo chown 0:0 storage/ci-existing-file
+          sudo chmod 0644 storage/ci-existing-file
           docker compose config --quiet
           docker compose build --build-arg UPSTREAM_DIGEST="$UPSTREAM_DIGEST" --build-arg SOURCE_REVISION="$GITHUB_SHA"
       - name: Start candidate
         if: steps.check.outputs.skip != 'true'
         run: docker compose up -d --no-build --wait --wait-timeout 300
+      - name: Verify storage initialization
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          test "$(stat -c '%u:%g' storage)" = 1000:1000
+          test "$(stat -c '%u:%g:%a' storage/ci-existing-file)" = 0:0:644
+          docker compose exec -T -u abc figcraft sh -c 'p=$(mktemp /storage/ci-write.XXXXXXXX) && rm -- "$p"'
       - name: Verify MCP and live document mutation
         if: steps.check.outputs.skip != 'true'
         run: python3 scripts/smoke.py

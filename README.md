@@ -64,7 +64,7 @@ In Portainer add the GHCR registry, then create a stack from compose.portainer.y
 
 Port 8100 serves both /mcp and /api/files using the existing MCP bearer key. All file tool and API paths are relative to /storage, e.g. assets/logo.png. Native FigCraft tools use the resulting absolute /storage/assets/logo.png path. Selkies uploads/downloads also target /storage.
 
-Set FILE_PUBLIC_URL to a browser-reachable origin, e.g. http://172.28.1.10:8100 (or your HTTPS reverse proxy origin), to enable temporary links. Ordinary API calls do not require it. FILE_MAX_BYTES defaults to 268435456 (256 MiB). Inline MCP uploads are limited to 1 MiB decoded. The service runs as abc (configured PUID/PGID); ensure the storage mount is writable. Recreate after changing environment variables.
+Set FILE_PUBLIC_URL to a browser-reachable origin, e.g. http://172.28.1.10:8100 (or your HTTPS reverse proxy origin), to enable temporary links. Ordinary API calls do not require it. FILE_MAX_BYTES defaults to 268435456 (256 MiB). Inline MCP uploads are limited to 1 MiB decoded. The service runs as abc (configured PUID/PGID); startup checks writability and, if necessary, repairs ownership and owner permissions on the storage root only. Existing files and subdirectories are never recursively changed. Writable mounts retain their existing ownership. If repair fails (e.g. read-only bind mount, SMB/NFS root squashing or ACLs), startup logs a warning and continues; fix permissions on the host. Recreate after changing environment variables.
 
 ### HTTP API
 
@@ -110,7 +110,7 @@ Temporary URLs are HMAC-signed bearer capabilities scoped to one file and operat
 - URL tool error: configure FILE_PUBLIC_URL with scheme, host and optional port, no path.
 - 409: choose a different filename or explicitly authorize overwrite.
 - 413: use binary HTTP for large files or adjust FILE_MAX_BYTES.
-- 403 on storage operations: check mount ownership and PUID/PGID.
+- 403 on storage operations: check `docker logs figcraft` for `[init-figcraft-storage]` warnings, mount ownership, ACLs and PUID/PGID. Existing nested directories may need separate permission fixes.
 - Missing MCP tools: reconnect the client after redeploying the new image.
 
 File paths reject absolute paths, traversal and symlink traversal using Linux directory descriptors. Only regular files are served. The shared storage mount is trusted, not an isolation boundary against hostile local users or processes concurrently moving directories. Use HTTPS or a trusted VPN. Native Supergateway is now internal-only on 127.0.0.1:8101; the HTTP front end proxies /mcp and /healthz. Never publish 8101 or 7979. The unauthenticated Selkies web UI must remain on a trusted network.
