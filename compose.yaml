@@ -1,11 +1,6 @@
 services:
   figcraft:
-    build:
-      context: .
-      args:
-        FIGCRAFT_IMAGE: ${FIGCRAFT_IMAGE:-junkerderprovinz/figcraft:latest}
-        SUPERGATEWAY_VERSION: ${SUPERGATEWAY_VERSION:-4.2.4}
-    image: figcraft-docker:local
+    image: ${FIGCRAFT_MCP_IMAGE:-ghcr.io/the-braincell/figcraft-docker:latest}
     container_name: figcraft
     restart: unless-stopped
     shm_size: 1gb

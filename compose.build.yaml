@@ -1,0 +1,9 @@
+services:
+  figcraft:
+    image: figcraft-docker:local
+    pull_policy: build
+    build:
+      context: .
+      args:
+        FIGCRAFT_IMAGE: ${FIGCRAFT_IMAGE:-junkerderprovinz/figcraft:latest}
+        SUPERGATEWAY_VERSION: ${SUPERGATEWAY_VERSION:-4.2.4}

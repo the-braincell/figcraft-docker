@@ -17,3 +17,5 @@ Superseding prior optional web authentication notes: explicitly set PASSWORD emp
 File transfers: public port 8100 serves MCP and authenticated HTTP; Supergateway 8101 and native control 7979 are internal-only. Keep paths confined to /storage, reject traversal/symlinks, default no overwrite, stage uploads atomically, enforce size limits and scoped expiring signed links. Maintain README and CI coverage for binary roundtrips, MCP tools, authentication, signed links and live edits.
 
 Storage startup: after init-craft (configured abc identity), check actual write access as abc. Repair only the storage root when necessary, never recursively alter existing contents, preserve writable mounts, and warn without blocking startup if the host filesystem prevents repair. CI must start with root-owned storage and verify existing file ownership/mode is preserved before upload tests.
+
+Default compose.yaml must deploy the published GHCR image without a build section. Use compose.build.yaml explicitly for local builds and CI; retain compose.portainer.yaml for existing deployments. CI must test and publish the exact locally built candidate, never the previous GHCR image.

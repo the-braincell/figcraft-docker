@@ -73,17 +73,17 @@ jobs:
           sudo touch storage/ci-existing-file
           sudo chown 0:0 storage/ci-existing-file
           sudo chmod 0644 storage/ci-existing-file
-          docker compose config --quiet
-          docker compose build --build-arg UPSTREAM_DIGEST="$UPSTREAM_DIGEST" --build-arg SOURCE_REVISION="$GITHUB_SHA"
+          docker compose -f compose.yaml -f compose.build.yaml config --quiet
+          docker compose -f compose.yaml -f compose.build.yaml build --build-arg UPSTREAM_DIGEST="$UPSTREAM_DIGEST" --build-arg SOURCE_REVISION="$GITHUB_SHA"
       - name: Start candidate
         if: steps.check.outputs.skip != 'true'
-        run: docker compose up -d --no-build --wait --wait-timeout 300
+        run: docker compose -f compose.yaml -f compose.build.yaml up -d --no-build --wait --wait-timeout 300
       - name: Verify storage initialization
         if: steps.check.outputs.skip != 'true'
         run: |
           test "$(stat -c '%u:%g' storage)" = 1000:1000
           test "$(stat -c '%u:%g:%a' storage/ci-existing-file)" = 0:0:644
-          docker compose exec -T -u abc figcraft sh -c 'p=$(mktemp /storage/ci-write.XXXXXXXX) && rm -- "$p"'
+          docker compose -f compose.yaml -f compose.build.yaml exec -T -u abc figcraft sh -c 'p=$(mktemp /storage/ci-write.XXXXXXXX) && rm -- "$p"'
       - name: Verify MCP and live document mutation
         if: steps.check.outputs.skip != 'true'
         run: python3 scripts/smoke.py
@@ -91,8 +91,8 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           test "$(curl -ksS -o /dev/null -w '%{http_code}' https://127.0.0.1:3001/)" = 200
-          docker compose exec -T figcraft sh -c 'test -z "${PASSWORD:-}" && test "$SELKIES_ENABLE_BASIC_AUTH" = false'
-          test "$(docker compose exec -T figcraft date +%z)" = +0000
+          docker compose -f compose.yaml -f compose.build.yaml exec -T figcraft sh -c 'test -z "${PASSWORD:-}" && test "$SELKIES_ENABLE_BASIC_AUTH" = false'
+          test "$(docker compose -f compose.yaml -f compose.build.yaml exec -T figcraft date +%z)" = +0000
       - name: Publish tested image
         if: success() && steps.check.outputs.skip != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         shell: bash
@@ -105,6 +105,6 @@ jobs:
           docker push "$IMAGE:latest"
           echo "Published $IMAGE:$tag and $IMAGE:latest" >> "$GITHUB_STEP_SUMMARY"
       - if: always() && steps.check.outputs.skip != 'true'
-        run: docker compose logs
+        run: docker compose -f compose.yaml -f compose.build.yaml logs
       - if: always() && steps.check.outputs.skip != 'true'
-        run: docker compose down
+        run: docker compose -f compose.yaml -f compose.build.yaml down

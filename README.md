@@ -6,10 +6,11 @@ One container, one native FigCraft desktop, two interfaces: Selkies browser desk
 
 ## Deploy
 
-Copy .env.example to .env; set a strong unique MCP_API_KEY (e.g. openssl rand -hex 32). Match PUID/PGID and point CONFIG_DIR and STORAGE_DIR at your existing mounts. Back them up and stop your old container before starting the replacement; do not share the same config between running instances.
+Authenticate to GHCR with a classic PAT with read:packages if the package is private. Copy .env.example to .env; set a strong unique MCP_API_KEY (e.g. openssl rand -hex 32). Match PUID/PGID and point CONFIG_DIR and STORAGE_DIR at your existing mounts. Back them up and stop your old container before starting the replacement; do not share the same config between running instances.
 
 ```sh
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Both published ports bind to all IPv4 interfaces (0.0.0.0) by default for trusted internal networks. Restrict access with firewall rules or override WEB_BIND and MCP_BIND with a specific LAN/VPN address or 127.0.0.1. Use TLS or a trusted VPN for remote access. The browser is unauthenticated by default; do not expose it to untrusted networks. Do not send bearer tokens over untrusted plaintext HTTP.
@@ -50,11 +51,11 @@ Upstream: https://github.com/junkerderprovinz/artcraft-apps ; https://github.com
 
 ## Base image updates
 
-The default base is `junkerderprovinz/figcraft:latest`. Rebuild with `docker compose build --pull` followed by `docker compose up -d`. Back up persistent data first and rerun the acceptance test. Set FIGCRAFT_IMAGE to a known-good digest for rollback or reproducibility. Upstream changes may affect CLI availability or startup integration.
+The default deployment pulls the tested GHCR package. For local development, the default base is `junkerderprovinz/figcraft:latest`. Build explicitly with `docker compose -f compose.yaml -f compose.build.yaml build --pull` followed by `docker compose -f compose.yaml -f compose.build.yaml up -d --no-build`. Back up persistent data first and rerun the acceptance test. Set FIGCRAFT_IMAGE to a known-good digest for rollback or reproducibility. Upstream changes may affect CLI availability or startup integration.
 
 ## Automated distribution (GHCR)
 
-The workflow runs on main pushes, pull requests, manual dispatch and every six hours. Scheduled runs compare the upstream digest and source revision against the last successful GHCR image. Changed builds use the exact resolved upstream digest; the same local candidate is tested and published without rebuilding. Publication is restricted to main, and failures leave the previous latest tag untouched. CI additionally checks that an MCP-created rectangle exists in the live desktop control API; browser pixel-level verification remains manual.
+The default compose.yaml deploys the packaged GHCR image; compose.build.yaml is an explicit local build override used by CI. compose.portainer.yaml remains supported for existing stacks and requires absolute mount paths. The workflow runs on main pushes, pull requests, manual dispatch and every six hours. Scheduled runs compare the upstream digest and source revision against the last successful GHCR image. Changed builds use the exact resolved upstream digest; the same local candidate is tested and published without rebuilding. Publication is restricted to main, and failures leave the previous latest tag untouched. CI additionally checks that an MCP-created rectangle exists in the live desktop control API; browser pixel-level verification remains manual.
 
 Images: `ghcr.io/the-braincell/figcraft-docker:latest` and unique `build-RUN_ID-ATTEMPT` tags. Linux amd64 initially. For strict rollback pin the registry manifest digest. Packages are private unless the organization changes visibility; configure registry access in Portainer with a GitHub classic PAT with read:packages and any required organization SSO authorization. GitHub Actions uses its own GITHUB_TOKEN with packages:write, subject to org policy.
 
