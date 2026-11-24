@@ -20,7 +20,6 @@ jobs:
       packages: write
     env:
       MCP_API_KEY: ci-only-test-key
-      WEB_PASSWORD: ci-only-desktop-password
       IMAGE: ghcr.io/the-braincell/figcraft-docker
     steps:
       - uses: actions/checkout@v4
@@ -73,11 +72,11 @@ jobs:
       - name: Verify MCP and live document mutation
         if: steps.check.outputs.skip != 'true'
         run: python3 scripts/smoke.py
-      - name: Verify browser authentication
+      - name: Verify default unauthenticated browser access
         if: steps.check.outputs.skip != 'true'
         run: |
-          test "$(curl -ksS -o /dev/null -w '%{http_code}' https://127.0.0.1:3001/)" = 401
-          curl -kf --user "figcraft:$WEB_PASSWORD" https://127.0.0.1:3001/ -o /dev/null
+          curl -kf https://127.0.0.1:3001/ -o /dev/null
+          test "$(docker compose exec -T figcraft date +%z)" = +0000
       - name: Publish tested image
         if: success() && steps.check.outputs.skip != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         shell: bash

@@ -6,7 +6,7 @@ One container, one native FigCraft desktop, two interfaces: Selkies browser desk
 
 ## Deploy
 
-Copy .env.example to .env; set strong unique WEB_PASSWORD and MCP_API_KEY (e.g. openssl rand -hex 32). Match PUID/PGID and point CONFIG_DIR and STORAGE_DIR at your existing mounts. Back them up and stop your old container before starting the replacement; do not share the same config between running instances.
+Copy .env.example to .env; set a strong unique MCP_API_KEY (e.g. openssl rand -hex 32). Match PUID/PGID and point CONFIG_DIR and STORAGE_DIR at your existing mounts. Back them up and stop your old container before starting the replacement; do not share the same config between running instances.
 
 ```sh
 docker compose up -d --build
@@ -14,7 +14,7 @@ docker compose up -d --build
 
 Default bindings are loopback on the Docker host. Use an SSH tunnel for both interfaces or configure a trusted VPN/reverse proxy with TLS. To bind to a particular LAN/VPN address, set WEB_BIND and MCP_BIND explicitly. Do not send passwords or bearer tokens over untrusted plaintext HTTP.
 
-- Browser: https://127.0.0.1:3001 (desktop username and password; upstream self-signed TLS by default).
+- Browser: https://127.0.0.1:3001 (no login by default; upstream self-signed TLS by default).
 - MCP: http://127.0.0.1:8000/mcp (Authorization: Bearer YOUR_KEY).
 - Control: 127.0.0.1:7979 inside the container only; never publish it.
 
@@ -34,13 +34,17 @@ Claude Desktop local configuration:
 
 The upstream s6 init remains intact. Its init-craft copies our modified autostart to the desktop config on startup. The app starts with --control 7979 and automation file roots /storage; s6 runs Supergateway as abc. Every MCP session attaches to the existing app, not a new document engine. A gateway restart does not restart the desktop. The health check verifies both listeners, not actual edits.
 
+## Browser access and timezone
+
+The desktop is unauthenticated by default (`WEB_AUTH=false`, empty `WEB_PASSWORD`) for trusted internal deployments. To disable direct host access, remove the browser port mapping from Compose; the desktop process remains running for MCP. Other containers on the same Docker network may still reach it, so isolate that network if necessary. To opt into browser authentication, set `WEB_AUTH=true`, `WEB_USER` and a nonempty `WEB_PASSWORD`. Clear any previous browser password when disabling authentication, since the upstream web proxy may use it independently. MCP bearer authentication remains mandatory. The default timezone is UTC (`TZ=UTC`).
+
 ## Acceptance test
 
 Export MCP_API_KEY locally and run python3 scripts/smoke.py. Open the browser and create a disposable design. Ask Claude to inspect the active document, add a named rectangle, then confirm it appears in the browser. Edit it manually and ask Claude to inspect it again. Save to /storage and verify persistence after restart. Do not blindly retry an edit after a timeout.
 
 ## Security
 
-Single trusted operator; both interfaces can alter the active document. Automation roots restrict file operations but are not a complete sandbox. Keep secrets out of git, restrict mounts, never publish the control socket, and verify both authentication mechanisms before enabling remote access. Claude.ai cloud connectors are not covered by this LAN deployment.
+Single trusted operator; both interfaces can alter the active document. Automation roots restrict file operations but are not a complete sandbox. Keep secrets out of git, restrict mounts, never publish the control socket, and verify MCP authentication before enabling remote access. Claude.ai cloud connectors are not covered by this LAN deployment.
 
 Upstream: https://github.com/junkerderprovinz/artcraft-apps ; https://github.com/storytold/figcraft/blob/v0.18.1/docs/mcp.md ; https://github.com/supercorp-ai/supergateway .
 
@@ -54,4 +58,4 @@ The workflow runs on main pushes, pull requests, manual dispatch and every six h
 
 Images: `ghcr.io/the-braincell/figcraft-docker:latest` and unique `build-RUN_ID-ATTEMPT` tags. Linux amd64 initially. For strict rollback pin the registry manifest digest. Packages are private unless the organization changes visibility; configure registry access in Portainer with a GitHub classic PAT with read:packages and any required organization SSO authorization. GitHub Actions uses its own GITHUB_TOKEN with packages:write, subject to org policy.
 
-In Portainer add the GHCR registry, then create a stack from compose.portainer.yaml (paste the file or use Git deployment). Set absolute CONFIG_DIR and STORAGE_DIR to your existing host paths; set WEB_PASSWORD, MCP_API_KEY and desired WEB_BIND/MCP_BIND. Stop the old container before deployment. Do not deploy until the first successful publication. Pull and redeploy manually after backups; the scheduled workflow updates the registry, not your running desktop, so unsaved work is not interrupted. Use FIGCRAFT_MCP_IMAGE to select a prior build or digest if rollback is needed.
+In Portainer add the GHCR registry, then create a stack from compose.portainer.yaml (paste the file or use Git deployment). Set absolute CONFIG_DIR and STORAGE_DIR to your existing host paths; set MCP_API_KEY and desired WEB_BIND/MCP_BIND. Stop the old container before deployment. Do not deploy until the first successful publication. Pull and redeploy manually after backups; the scheduled workflow updates the registry, not your running desktop, so unsaved work is not interrupted. Use FIGCRAFT_MCP_IMAGE to select a prior build or digest if rollback is needed.
